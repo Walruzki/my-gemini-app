@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Gemini Mobile Assistant</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    header {
+      text-align: center;
+      padding: 12px 0;
+    }
+
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .output-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      min-height: 180px;
+      max-height: 50vh;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      line-height: 1.5;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .output-box.active {
+      color: var(--text);
+    }
+
+    .input-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    textarea {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      color: var(--text);
+      font-size: 1rem;
+      resize: none;
+      outline: none;
+      height: 90px;
+    }
+
+    textarea:focus {
+      border-color: var(--primary);
+    }
+
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: var(--primary-hover);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Gemini AI Assistant</h1>
+    </header>
+
+    <!-- Where the response appears -->
+    <div id="responseBox" class="output-box">Your response will appear here...</div>
+
+    <!-- User input and action button -->
+    <div class="input-section">
+      <textarea id="promptInput" placeholder="Ask anything..."></textarea>
+      <button id="sendBtn" onclick="handleSend()">Send Prompt</button>
+    </div>
+  </div>
+
+  <script>
+    function handleSend() {
+      const input = document.getElementById("promptInput");
+      const responseBox = document.getElementById("responseBox");
+      const sendBtn = document.getElementById("sendBtn");
+
+      const text = input.value.trim();
+      if (!text) return;
+
+      // Disable button & update UI
+      sendBtn.disabled = true;
+      sendBtn.innerText = "Thinking...";
+      responseBox.classList.add("active");
+      responseBox.innerText = `Sending: "${text}"\n\n(Interface works! In Phase 4, this triggers your private Gemini API.)`;
+
+      // Reset button after brief simulation
+      setTimeout(() => {
+        sendBtn.disabled = false;
+        sendBtn.innerText = "Send Prompt";
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
