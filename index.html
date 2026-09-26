@@ -1,178 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Pocket Gemini</title>
-  <style>
-    :root {
-      --bg: #0f172a;
-      --card: #1e293b;
-      --border: #334155;
-      --text: #f8fafc;
-      --muted: #94a3b8;
-      --primary: #2563eb;
-      --primary-hover: #1d4ed8;
-      --user-msg: #1e3a8a;
-      --error: #ef4444;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      display: flex;
-      justify-content: center;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 480px;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      padding: 12px;
-      gap: 10px;
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 6px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    header h1 {
-      font-size: 1.15rem;
-      font-weight: 600;
-    }
-
-    .header-btns {
-      display: flex;
-      gap: 8px;
-    }
-
-    .btn-sm {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--muted);
-      font-size: 0.75rem;
-      padding: 5px 8px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    /* Chat bubble area */
-    .chat-area {
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding-right: 4px;
-    }
-
-    .message {
-      padding: 12px 14px;
-      border-radius: 12px;
-      font-size: 0.95rem;
-      line-height: 1.5;
-      max-width: 88%;
-      white-space: pre-wrap;
-    }
-
-    .message.user {
-      align-self: flex-end;
-      background-color: var(--user-msg);
-      border-bottom-right-radius: 2px;
-    }
-
-    .message.model {
-      align-self: flex-start;
-      background-color: var(--card);
-      border: 1px solid var(--border);
-      border-bottom-left-radius: 2px;
-    }
-
-    .message.system {
-      align-self: center;
-      color: var(--muted);
-      font-size: 0.85rem;
-      background: none;
-      padding: 4px;
-    }
-
-    .input-section {
-      display: flex;
-      gap: 8px;
-      padding-top: 4px;
-    }
-
-    textarea {
-      flex: 1;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      color: var(--text);
-      font-size: 0.95rem;
-      resize: none;
-      outline: none;
-      height: 54px;
-    }
-
-    textarea:focus {
-      border-color: var(--primary);
-    }
-
-    button.send-btn {
-      background-color: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      padding: 0 16px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    button.send-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="container">
-    <header>
-      <h1>Pocket Gemini</h1>
-      <div class="header-btns">
-        <button class="btn-sm" onclick="clearChat()">Clear</button>
-        <button class="btn-sm" onclick="resetPin()">PIN</button>
-      </div>
-    </header>
-
-    <div id="chatArea" class="chat-area">
-      <div class="message system">Start a conversation. History is remembered.</div>
-    </div>
-
-    <div class="input-section">
-      <textarea id="promptInput" placeholder="Message..."></textarea>
-      <button id="sendBtn" class="send-btn" onclick="handleSend()">Send</button>
-    </div>
-  </div>
-
-  <script>
-    // In-memory chat history formatted for Gemini
+<script>
     let conversationHistory = [];
 
     function getStoredPin() {
@@ -192,85 +18,87 @@
       }
     }
 
-    function clearChat() {
+    function clearConversation() {
       conversationHistory = [];
-      const chatArea = document.getElementById("chatArea");
-      chatArea.innerHTML = '<div class="message system">Conversation reset.</div>';
+      const log = document.getElementById("chatLog");
+      log.innerHTML = '<div class="bubble model">Chat cleared. Ready for a new topic.</div>';
     }
 
-    function appendMessage(role, text) {
-      const chatArea = document.getElementById("chatArea");
+    function appendBubble(role, text) {
+      const log = document.getElementById("chatLog");
       const bubble = document.createElement("div");
-      bubble.className = `message ${role}`;
+      bubble.className = `bubble ${role}`;
       bubble.innerText = text;
-      chatArea.appendChild(bubble);
-      chatArea.scrollTop = chatArea.scrollHeight;
+      log.appendChild(bubble);
+      log.scrollTop = log.scrollHeight;
       return bubble;
     }
 
     async function handleSend() {
       const input = document.getElementById("promptInput");
       const sendBtn = document.getElementById("sendBtn");
+      const promptText = input.value.trim();
+      if (!promptText) return;
+
       const pin = getStoredPin();
+      if (!pin) return;
 
-      if (!pin) {
-        alert("PIN required.");
-        return;
-      }
+      // 1. Show User message
+      appendBubble("user", promptText);
+      input.value = "";
 
-      const text = input.value.trim();
-      if (!text) return;
-
-      // 1. Add User Message to UI and History
-      appendMessage("user", text);
+      // Add to ongoing history
       conversationHistory.push({
         role: "user",
-        parts: [{ text: text }]
+        parts: [{ text: promptText }]
       });
 
-      // Keep only the latest 10 messages to save token usage
-      if (conversationHistory.length > 10) {
-        conversationHistory = conversationHistory.slice(-10);
-      }
-
-      input.value = "";
       sendBtn.disabled = true;
-      const thinkingBubble = appendMessage("system", "Thinking...");
+      const statusBubble = appendBubble("status", "Gemini is typing...");
 
       try {
-        const res = await fetch("/.netlify/functions/gemini", {
+        // Use full absolute window origin to avoid Safari regex path bugs
+        const endpoint = `${window.location.origin}/.netlify/functions/gemini`;
+
+        const res = await fetch(endpoint, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ history: conversationHistory, pin: pin }),
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            history: conversationHistory,
+            pin: pin
+          })
         });
 
         const data = await res.json();
-        thinkingBubble.remove();
+        statusBubble.remove();
 
         if (res.status === 401) {
           localStorage.removeItem("pocket_gemini_pin");
-          alert("Invalid PIN. Please try again.");
-          return;
+          // Remove the unfulfilled user message from history
+          conversationHistory.pop();
+          throw new Error("Invalid PIN. Tap Send to re-enter.");
         }
 
         if (!res.ok) {
-          throw new Error(data.error || "Request failed");
+          // Pop failed turn so history stays clean
+          conversationHistory.pop();
+          throw new Error(data.error || "Failed to reach Gemini");
         }
 
-        // 2. Add Model Response to UI and History
-        appendMessage("model", data.text);
+        // 2. Add AI reply
+        appendBubble("model", data.text);
         conversationHistory.push({
           role: "model",
           parts: [{ text: data.text }]
         });
 
       } catch (err) {
-        thinkingBubble.remove();
-        appendMessage("system", `Error: ${err.message}`);
+        statusBubble.remove();
+        appendBubble("status", `Error: ${err.message}`);
       } finally {
         sendBtn.disabled = false;
       }
     }
   </script>
-</body>
-</html>
