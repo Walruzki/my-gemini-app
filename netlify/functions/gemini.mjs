@@ -1,5 +1,4 @@
 export default async (req) => {
-  // Only accept POST requests
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
@@ -8,7 +7,16 @@ export default async (req) => {
   }
 
   try {
-    const { prompt } = await req.json();
+    const { prompt, pin } = await req.json();
+
+    // 1. Validate Secret PIN
+    const requiredPin = process.env.APP_PIN;
+    if (requiredPin && pin !== requiredPin) {
+      return new Response(JSON.stringify({ error: "Unauthorized: Invalid PIN" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
 
     if (!prompt) {
       return new Response(JSON.stringify({ error: "Prompt is required" }), {
@@ -19,13 +27,13 @@ export default async (req) => {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "API key not configured in Netlify" }), {
+      return new Response(JSON.stringify({ error: "API key not configured" }), {
         status: 500,
         headers: { "Content-Type": "application/json" }
       });
     }
 
-   // Call Google Gemini API securely from the backend
+    // 2. Call Gemini API
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
 
     const apiResponse = await fetch(url, {
@@ -35,7 +43,7 @@ export default async (req) => {
         system_instruction: {
           parts: [
             {
-              text: "You are a concise, direct executive assistant. Follow the MECE principle (Mutually Exclusive, Collectively Exhaustive). Lead directly with the answer in sentence one. Use clear bullet points and avoid unnecessary conversational filler."
+              text: "You are a concise, direct executive assistant. Follow the MECE principle. Lead directly with the answer in sentence one. Use clear bullet points and avoid unnecessary conversational filler."
             }
           ]
         },
@@ -56,7 +64,6 @@ export default async (req) => {
       });
     }
 
-    // Extract the generated text from Gemini's response
     const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
 
     return new Response(JSON.stringify({ text: replyText }), {
