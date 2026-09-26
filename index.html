@@ -6,7 +6,7 @@
   <title>Pocket Gemini</title>
   <style>
     :root {
-      --bg: #0f172a;
+      --bg: #0b1120;
       --card: #1e293b;
       --border: #334155;
       --text: #f8fafc;
@@ -66,7 +66,7 @@
       border: 1px solid var(--border);
       color: var(--muted);
       font-size: 0.75rem;
-      padding: 4px 8px;
+      padding: 5px 10px;
       border-radius: 6px;
       cursor: pointer;
     }
@@ -124,8 +124,8 @@
     }
 
     .preview-bar img {
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       object-fit: cover;
       border-radius: 4px;
     }
@@ -135,7 +135,7 @@
       border: none;
       color: var(--error);
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       margin-left: auto;
     }
 
@@ -155,7 +155,7 @@
       font-size: 0.95rem;
       resize: none;
       outline: none;
-      height: 48px;
+      height: 46px;
     }
 
     textarea:focus {
@@ -165,14 +165,14 @@
     .attach-btn {
       background: var(--card);
       border: 1px solid var(--border);
-      color: var(--muted);
+      color: var(--text);
       border-radius: 10px;
-      width: 44px;
-      height: 44px;
+      width: 46px;
+      height: 46px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.2rem;
+      font-size: 1.25rem;
       cursor: pointer;
     }
 
@@ -181,7 +181,7 @@
       color: white;
       border: none;
       border-radius: 10px;
-      height: 44px;
+      height: 46px;
       padding: 0 16px;
       font-weight: 600;
       cursor: pointer;
@@ -208,14 +208,14 @@
       <div class="bubble model">Ready. You can type a prompt or attach a photo to analyze.</div>
     </div>
 
-    <!-- Hidden native file picker for photo/camera -->
+    <!-- Hidden Native File Input -->
     <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelected(event)" />
 
-    <!-- Attachment thumbnail preview -->
+    <!-- Image preview pill -->
     <div id="previewContainer" class="preview-bar" style="display: none;">
       <img id="previewImg" src="" alt="Thumbnail" />
-      <span>Image ready to send</span>
-      <button onclick="removeAttachedImage()">✕ Remove</button>
+      <span>Photo attached</span>
+      <button onclick="removeAttachedImage()">✕</button>
     </div>
 
     <div class="input-section">
@@ -227,7 +227,7 @@
 
   <script>
     let conversationHistory = [];
-    let currentImagePayload = null;
+    let currentImage = null;
 
     function getStoredPin() {
       let pin = localStorage.getItem("pocket_gemini_pin");
@@ -264,28 +264,32 @@
     }
 
     function handleFileSelected(event) {
-      const file = event.target.files[0];
+      const file = event.target.files && event.target.files[0];
       if (!file) return;
 
+      const mimeType = file.type || "image/jpeg";
       const reader = new FileReader();
-      reader.onload = function(e) {
-        const fullBase64 = e.target.result;
-        const [meta, rawBase64] = fullBase64.split(",");
-        const mimeType = meta.match(/:(.*?);/)[1];
 
-        currentImagePayload = {
+      reader.onload = function(e) {
+        const result = e.target.result;
+        // Clean base64 split without regex
+        const commaIndex = result.indexOf(",");
+        const base64Data = commaIndex !== -1 ? result.substring(commaIndex + 1) : result;
+
+        currentImage = {
           mimeType: mimeType,
-          data: rawBase64
+          data: base64Data
         };
 
-        document.getElementById("previewImg").src = fullBase64;
+        document.getElementById("previewImg").src = result;
         document.getElementById("previewContainer").style.display = "flex";
       };
+
       reader.readAsDataURL(file);
     }
 
     function removeAttachedImage() {
-      currentImagePayload = null;
+      currentImage = null;
       document.getElementById("fileInput").value = "";
       document.getElementById("previewContainer").style.display = "none";
     }
@@ -295,25 +299,27 @@
       const sendBtn = document.getElementById("sendBtn");
       const promptText = input.value.trim();
 
-      if (!promptText && !currentImagePayload) return;
+      if (!promptText && !currentImage) return;
 
       const pin = getStoredPin();
       if (!pin) return;
 
-      const displayText = promptText || (currentImagePayload ? "[Analyzing Attached Image]" : "");
-      appendBubble("user", displayText);
+      // Display bubble
+      const label = promptText || "[Attached Photo]";
+      appendBubble("user", label);
       input.value = "";
 
-      const userTextPayload = promptText || "Analyze this image concisely.";
+      const textForAI = promptText || "Analyze this image concisely.";
       conversationHistory.push({
         role: "user",
-        parts: [{ text: userTextPayload }]
+        parts: [{ text: textForAI }]
       });
 
       sendBtn.disabled = true;
-      const statusBubble = appendBubble("status", "Gemini is analyzing...");
+      const statusBubble = appendBubble("status", "Gemini is thinking...");
 
-      const imageToSend = currentImagePayload;
+      // Capture current image & clear picker
+      const imagePayload = currentImage;
       removeAttachedImage();
 
       try {
@@ -322,7 +328,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             history: conversationHistory,
-            image: imageToSend,
+            image: imagePayload,
             pin: pin
           })
         });
@@ -349,7 +355,7 @@
 
       } catch (err) {
         statusBubble.remove();
-        appendBubble("status", `Error: ${err.message}`);
+        appendBubble("status", "Error: " + err.message);
       } finally {
         sendBtn.disabled = false;
       }
