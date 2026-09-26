@@ -111,10 +111,38 @@
       font-size: 0.8rem;
     }
 
+    .preview-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card);
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .preview-bar img {
+      width: 32px;
+      height: 32px;
+      object-fit: cover;
+      border-radius: 4px;
+    }
+
+    .preview-bar button {
+      background: none;
+      border: none;
+      color: var(--error);
+      cursor: pointer;
+      font-size: 0.85rem;
+      margin-left: auto;
+    }
+
     .input-section {
       display: flex;
       gap: 8px;
-      padding-top: 4px;
+      align-items: center;
     }
 
     textarea {
@@ -134,11 +162,26 @@
       border-color: var(--primary);
     }
 
+    .attach-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 10px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+
     button.send-btn {
       background-color: var(--primary);
       color: white;
       border: none;
       border-radius: 10px;
+      height: 44px;
       padding: 0 16px;
       font-weight: 600;
       cursor: pointer;
@@ -162,17 +205,29 @@
     </header>
 
     <div id="chatLog" class="chat-log">
-      <div class="bubble model">Hello! I am ready. What are we working on?</div>
+      <div class="bubble model">Ready. You can type a prompt or attach a photo to analyze.</div>
+    </div>
+
+    <!-- Hidden native file picker for photo/camera -->
+    <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelected(event)" />
+
+    <!-- Attachment thumbnail preview -->
+    <div id="previewContainer" class="preview-bar" style="display: none;">
+      <img id="previewImg" src="" alt="Thumbnail" />
+      <span>Image ready to send</span>
+      <button onclick="removeAttachedImage()">✕ Remove</button>
     </div>
 
     <div class="input-section">
-      <textarea id="promptInput" placeholder="Type a message..."></textarea>
+      <button class="attach-btn" onclick="document.getElementById('fileInput').click()" title="Attach Photo">📷</button>
+      <textarea id="promptInput" placeholder="Message or prompt..."></textarea>
       <button id="sendBtn" class="send-btn" onclick="handleSend()">Send</button>
     </div>
   </div>
 
   <script>
     let conversationHistory = [];
+    let currentImagePayload = null;
 
     function getStoredPin() {
       let pin = localStorage.getItem("pocket_gemini_pin");
@@ -193,6 +248,7 @@
 
     function clearConversation() {
       conversationHistory = [];
+      removeAttachedImage();
       const log = document.getElementById("chatLog");
       log.innerHTML = '<div class="bubble model">Chat cleared. Ready for a new topic.</div>';
     }
@@ -207,35 +263,66 @@
       return bubble;
     }
 
+    function handleFileSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const fullBase64 = e.target.result;
+        const [meta, rawBase64] = fullBase64.split(",");
+        const mimeType = meta.match(/:(.*?);/)[1];
+
+        currentImagePayload = {
+          mimeType: mimeType,
+          data: rawBase64
+        };
+
+        document.getElementById("previewImg").src = fullBase64;
+        document.getElementById("previewContainer").style.display = "flex";
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeAttachedImage() {
+      currentImagePayload = null;
+      document.getElementById("fileInput").value = "";
+      document.getElementById("previewContainer").style.display = "none";
+    }
+
     async function handleSend() {
       const input = document.getElementById("promptInput");
       const sendBtn = document.getElementById("sendBtn");
       const promptText = input.value.trim();
-      if (!promptText) return;
+
+      if (!promptText && !currentImagePayload) return;
 
       const pin = getStoredPin();
       if (!pin) return;
 
-      appendBubble("user", promptText);
+      const displayText = promptText || (currentImagePayload ? "[Analyzing Attached Image]" : "");
+      appendBubble("user", displayText);
       input.value = "";
 
+      const userTextPayload = promptText || "Analyze this image concisely.";
       conversationHistory.push({
         role: "user",
-        parts: [{ text: promptText }]
+        parts: [{ text: userTextPayload }]
       });
 
       sendBtn.disabled = true;
-      const statusBubble = appendBubble("status", "Gemini is typing...");
+      const statusBubble = appendBubble("status", "Gemini is analyzing...");
+
+      const imageToSend = currentImagePayload;
+      removeAttachedImage();
 
       try {
-        const endpoint = `/api/gemini`;
-        const res = await fetch(endpoint, {
+        const res = await fetch("/api/gemini", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             history: conversationHistory,
+            image: imageToSend,
             pin: pin
           })
         });
