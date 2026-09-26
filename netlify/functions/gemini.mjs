@@ -7,9 +7,10 @@ export default async (req) => {
   }
 
   try {
-    const { history, pin } = await req.json();
+    const body = await req.json();
+    const { history, pin } = body;
 
-    // 1. PIN verification
+    // 1. PIN Check
     const requiredPin = process.env.APP_PIN;
     if (requiredPin && pin !== requiredPin) {
       return new Response(JSON.stringify({ error: "Unauthorized: Invalid PIN" }), {
@@ -33,21 +34,22 @@ export default async (req) => {
       });
     }
 
-    // 2. Send the conversation history directly to Gemini
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+    // Clean contents array to guarantee strict schema
+    const formattedContents = history.map(item => ({
+      role: item.role === "user" ? "user" : "model",
+      parts: [{ text: String(item.parts[0]?.text || "") }]
+    }));
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
 
     const apiResponse = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         system_instruction: {
-          parts: [
-            {
-              text: "You are a concise, direct executive assistant. Follow the MECE principle. Lead directly with the answer in sentence one. Use clear bullet points and avoid unnecessary conversational filler."
-            }
-          ]
+          parts: [{ text: "You are a concise, direct executive assistant. Follow the MECE principle. Lead directly with the answer in sentence one." }]
         },
-        contents: history
+        contents: formattedContents
       })
     });
 
