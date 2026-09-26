@@ -7,9 +7,9 @@ export default async (req) => {
   }
 
   try {
-    const { prompt, pin } = await req.json();
+    const { history, pin } = await req.json();
 
-    // 1. Validate Secret PIN
+    // 1. PIN verification
     const requiredPin = process.env.APP_PIN;
     if (requiredPin && pin !== requiredPin) {
       return new Response(JSON.stringify({ error: "Unauthorized: Invalid PIN" }), {
@@ -18,8 +18,8 @@ export default async (req) => {
       });
     }
 
-    if (!prompt) {
-      return new Response(JSON.stringify({ error: "Prompt is required" }), {
+    if (!history || !Array.isArray(history) || history.length === 0) {
+      return new Response(JSON.stringify({ error: "Conversation history is required" }), {
         status: 400,
         headers: { "Content-Type": "application/json" }
       });
@@ -33,7 +33,7 @@ export default async (req) => {
       });
     }
 
-    // 2. Call Gemini API
+    // 2. Send the conversation history directly to Gemini
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
 
     const apiResponse = await fetch(url, {
@@ -47,11 +47,7 @@ export default async (req) => {
             }
           ]
         },
-        contents: [
-          {
-            parts: [{ text: prompt }]
-          }
-        ]
+        contents: history
       })
     });
 
