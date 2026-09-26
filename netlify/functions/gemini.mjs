@@ -25,12 +25,20 @@ export default async (req) => {
       });
     }
 
-    // Call Google Gemini API securely from the backend
-const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+   // Call Google Gemini API securely from the backend
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+
     const apiResponse = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        system_instruction: {
+          parts: [
+            {
+              text: "You are a concise, direct executive assistant. Follow the MECE principle (Mutually Exclusive, Collectively Exhaustive). Lead directly with the answer in sentence one. Use clear bullet points and avoid unnecessary conversational filler."
+            }
+          ]
+        },
         contents: [
           {
             parts: [{ text: prompt }]
