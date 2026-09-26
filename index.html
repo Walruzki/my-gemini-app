@@ -228,8 +228,7 @@
       const statusBubble = appendBubble("status", "Gemini is typing...");
 
       try {
-        const endpoint = `${window.location.origin}/.netlify/functions/gemini`;
-
+        const endpoint = `/api/gemini`;
         const res = await fetch(endpoint, {
           method: "POST",
           headers: {
