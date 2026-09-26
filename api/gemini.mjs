@@ -8,9 +8,9 @@ export default async (req) => {
 
   try {
     const body = await req.json();
-    const { history, pin } = body;
+    const { history, image, pin } = body;
 
-    // PIN Validation
+    // 1. PIN Validation
     const requiredPin = process.env.APP_PIN;
     if (requiredPin && pin !== requiredPin) {
       return new Response(JSON.stringify({ error: "Unauthorized: Invalid PIN" }), {
@@ -34,10 +34,22 @@ export default async (req) => {
       });
     }
 
+    // Format text history
     const formattedContents = history.map(item => ({
       role: item.role === "user" ? "user" : "model",
       parts: [{ text: String(item.parts[0]?.text || "") }]
     }));
+
+    // If an image is attached to the current user prompt, append it as inline_data
+    if (image && image.data && image.mimeType) {
+      const lastIndex = formattedContents.length - 1;
+      formattedContents[lastIndex].parts.push({
+        inline_data: {
+          mime_type: image.mimeType,
+          data: image.data
+        }
+      });
+    }
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
 
